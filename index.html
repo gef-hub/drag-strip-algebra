@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gear Up Algebra</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Manrope:wght@400;500;700;800&display=swap');
+
+  :root{
+    --bg-deep:#0b0f19;
+    --panel:#141a2b;
+    --panel-2:#1a2138;
+    --asphalt-1:#262c40;
+    --asphalt-2:#171b28;
+    --lane-line:#4a5170;
+    --sky-purple:#241a3d;
+    --sky-orange:#ff6b4a;
+    --sky-gold:#ffd166;
+    --player:#ff4d5e;
+    --player-glow:#ff98a2;
+    --rival:#38e5c9;
+    --rival-glow:#9ff5e6;
+    --accent:#ffcc33;
+    --ink:#f5f2ea;
+    --ink-dim:#a9adc7;
+    --card-border:rgba(255,255,255,0.09);
+    --success:#4ade80;
+    --danger:#ff6161;
+    font-family:'Manrope',system-ui,sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg-deep);
+    color:var(--ink);
+    margin:0;
+    padding-block:18px;
+    min-height:100%;
+  }
+  html,body{height:100%;}
+
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    padding-inline:16px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 18px;
+    background:linear-gradient(135deg,var(--panel-2),var(--panel));
+    border:1px solid var(--card-border);
+    border-radius:16px;
+  }
+  .topbar h1{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:1.5rem;
+    letter-spacing:0.02em;
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .topbar h1 .flag{font-size:1.3rem;}
+  .stats{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .stat{
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--card-border);
+    border-radius:10px;
+    padding:6px 14px;
+    text-align:center;
+    min-width:64px;
+  }
+  .stat-label{
+    display:block;
+    font-size:0.62rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:2px;
+  }
+  .stat span:last-child{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:1.2rem;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- Layout ---------- */
+  .race-layout{
+    display:grid;
+    grid-template-columns:minmax(280px,42%) 1fr;
+    gap:16px;
+    align-items:stretch;
+  }
+  @media (max-width:760px){
+    .race-layout{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Track panel ---------- */
+  .track-panel{
+    position:relative;
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid var(--card-border);
+    min-height:360px;
+    display:flex;
+    flex-direction:column;
+    background:linear-gradient(180deg,var(--sky-purple) 0%,var(--sky-orange) 55%,var(--sky-gold) 100%);
+  }
+  .sun{
+    position:absolute;
+    top:18%;
+    left:50%;
+    width:90px;
+    height:90px;
+    background:radial-gradient(circle,#fff6d8 0%,var(--accent) 55%,rgba(255,204,51,0) 75%);
+    border-radius:50%;
+    transform:translateX(-50%);
+    opacity:0.9;
+  }
+  .mountains{
+    position:absolute;
+    bottom:44%;
+    left:0;right:0;
+    height:16%;
+    background:rgba(24,14,38,0.65);
+    clip-path:polygon(0% 100%,0% 55%,8% 30%,16% 60%,24% 15%,33% 55%,42% 35%,52% 65%,61% 20%,70% 58%,79% 32%,88% 62%,96% 25%,100% 50%,100% 100%);
+  }
+
+  .gear-cluster{
+    position:absolute;
+    top:10px;
+    right:10px;
+    z-index:5;
+    background:rgba(11,15,25,0.55);
+    backdrop-filter:blur(2px);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:12px;
+    padding:8px 10px 6px;
+    text-align:center;
+  }
+  .gear-cluster .gear-label{
+    font-family:'Rajdhani',sans-serif;
+    font-size:0.62rem;
+    letter-spacing:0.14em;
+    color:var(--ink-dim);
+    margin-bottom:2px;
+  }
+  .gear-cluster .gear-now{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:1.4rem;
+    color:var(--accent);
+    line-height:1;
+  }
+  .shifter-svg{display:block;margin:4px auto 0;}
+  .shifter-svg line{stroke:rgba(255,255,255,0.35);stroke-width:3;stroke-linecap:round;}
+  .shifter-svg circle.slot{fill:rgba(255,255,255,0.25);}
+  .shifter-svg circle.slot.reached{fill:var(--accent);}
+  .shifter-svg circle.knob{fill:var(--player);stroke:#fff;stroke-width:2;transition:cx 0.45s cubic-bezier(.34,1.56,.64,1),cy 0.45s cubic-bezier(.34,1.56,.64,1);}
+  .shifter-svg text{font-family:'Rajdhani',sans-serif;font-size:9px;fill:var(--ink-dim);}
+
+  /* ---------- Strip / road ---------- */
+  .strip{
+    position:relative;
+    margin-top:auto;
+    height:56%;
+    background:linear-gradient(180deg,var(--asphalt-1),var(--asphalt-2));
+    border-top:3px solid rgba(255,255,255,0.15);
+  }
+  .finish-line{
+    position:absolute;
+    top:0; bottom:0;
+    right:6%;
+    width:10px;
+    background:
+      repeating-linear-gradient(45deg,#fff 0 6px,#1a1a1a 6px 12px) ,
+      repeating-linear-gradient(45deg,#1a1a1a 0 6px,#fff 6px 12px);
+    background-size:10px 10px;
+    background-position:0 0, 0 6px;
+    box-shadow:0 0 10px rgba(255,255,255,0.4);
+  }
+  .lane{
+    position:relative;
+    height:50%;
+    display:flex;
+    align-items:center;
+    border-bottom:2px dashed var(--lane-line);
+  }
+  .lane:last-child{border-bottom:none;}
+  .lane-label{
+    position:absolute;
+    left:8px;
+    top:4px;
+    font-family:'Rajdhani',sans-serif;
+    font-size:0.6rem;
+    letter-spacing:0.12em;
+    color:var(--ink-dim);
+    z-index:3;
+  }
+  .lane-player .lane-label{color:var(--player-glow);}
+  .lane-rival .lane-label{color:var(--rival-glow);}
+
+  .car{
+    position:absolute;
+    left:5%;
+    width:78px;
+    height:34px;
+    transition:left 0.85s cubic-bezier(.22,.9,.32,1.1);
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  }
+  .car-body{
+    position:relative;
+    width:100%;
+    height:20px;
+    margin-top:8px;
+    border-radius:10px 18px 6px 6px;
+    background:linear-gradient(180deg,var(--carcol-light,#fff) 0%,var(--carcol,#fff) 60%);
+  }
+  .car-player .car-body{--carcol:var(--player);--carcol-light:var(--player-glow);}
+  .car-rival .car-body{--carcol:var(--rival);--carcol-light:var(--rival-glow);}
+  .car-body::before{ /* cabin */
+    content:'';
+    position:absolute;
+    top:-9px;
+    left:22px;
+    width:34px;
+    height:14px;
+    border-radius:8px 10px 2px 2px;
+    background:inherit;
+    opacity:0.92;
+  }
+  .car-body::after{ /* windshield */
+    content:'';
+    position:absolute;
+    top:-7px;
+    left:26px;
+    width:14px;
+    height:9px;
+    border-radius:4px;
+    background:rgba(20,26,40,0.75);
+  }
+  .wheel{
+    position:absolute;
+    bottom:-5px;
+    width:12px;height:12px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#666,#111 70%);
+    border:1px solid #000;
+  }
+  .wheel.w1{left:12px;}
+  .wheel.w2{left:52px;}
+  .spoiler{
+    position:absolute;
+    right:-3px;
+    top:5px;
+    width:4px;
+    height:14px;
+    background:var(--carcol,#fff);
+    border-radius:2px;
+  }
+  .exhaust{
+    position:absolute;
+    left:-6px;
+    top:14px;
+    width:0;height:0;
+    opacity:0;
+  }
+  .car.boost .exhaust{
+    animation:puff 0.7s ease-out;
+  }
+  .car.boost{filter:drop-shadow(0 4px 10px rgba(255,204,51,0.55));}
+  @keyframes puff{
+    0%{opacity:0.9;width:4px;height:4px;box-shadow:0 0 0 0 rgba(255,255,255,0.6);}
+    100%{opacity:0;width:22px;height:10px;transform:translateX(-16px);box-shadow:0 0 0 6px rgba(255,255,255,0);}
+  }
+  .speedlines{
+    position:absolute;
+    left:0;right:0;top:0;bottom:0;
+    background-image:repeating-linear-gradient(90deg,rgba(255,255,255,0.06) 0 2px,transparent 2px 40px);
+    background-size:60px 100%;
+    animation:roll 1.1s linear infinite;
+    pointer-events:none;
+  }
+  .strip.fast .speedlines{animation-duration:0.35s;}
+  @keyframes roll{
+    from{background-position:0 0;}
+    to{background-position:-60px 0;}
+  }
+
+  /* ---------- Problem panel ---------- */
+  .problem-panel{
+    display:flex;
+  }
+  .problem-card{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    background:linear-gradient(160deg,var(--panel-2),var(--panel));
+    border:1px solid var(--card-border);
+    border-radius:18px;
+    padding:26px 26px 22px;
+  }
+  .problem-eyebrow{
+    font-family:'Rajdhani',sans-serif;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    font-size:0.72rem;
+    color:var(--ink-dim);
+  }
+  .problem-expr{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:clamp(2.1rem,6vw,3.1rem);
+    letter-spacing:0.01em;
+    text-wrap:balance;
+    color:var(--ink);
+  }
+  #answerForm{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  #answerInput{
+    flex:1;
+    min-width:160px;
+    font-family:'Rajdhani',sans-serif;
+    font-size:1.25rem;
+    font-weight:600;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid var(--card-border);
+    background:rgba(255,255,255,0.05);
+    color:var(--ink);
+  }
+  #answerInput:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  #answerForm button{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:1.1rem;
+    letter-spacing:0.04em;
+    padding:12px 22px;
+    border-radius:10px;
+    border:none;
+    background:linear-gradient(135deg,var(--accent),#ffb833);
+    color:#241a00;
+    cursor:pointer;
+  }
+  #answerForm button:hover{filter:brightness(1.06);}
+  #answerForm button:active{transform:translateY(1px);}
+
+  .feedback{
+    min-height:1.4em;
+    font-weight:700;
+    font-size:0.98rem;
+  }
+  .feedback.correct{color:var(--success);}
+  .feedback.wrong{color:var(--danger);}
+
+  .hint{
+    font-size:0.82rem;
+    color:var(--ink-dim);
+  }
+
+  /* ---------- Overlay ---------- */
+  .overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(6,8,14,0.72);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:16px;
+  }
+  .overlay-card{
+    background:linear-gradient(160deg,var(--panel-2),var(--panel));
+    border:1px solid var(--card-border);
+    border-radius:18px;
+    padding:32px 28px;
+    max-width:380px;
+    text-align:center;
+  }
+  .overlay-card h2{
+    font-family:'Rajdhani',sans-serif;
+    font-size:1.8rem;
+    margin:0 0 8px;
+    color:var(--accent);
+  }
+  .overlay-card p{
+    color:var(--ink-dim);
+    margin:0 0 18px;
+    line-height:1.5;
+  }
+  .overlay-card button{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:1.05rem;
+    padding:11px 26px;
+    border-radius:10px;
+    border:none;
+    background:linear-gradient(135deg,var(--accent),#ffb833);
+    color:#241a00;
+    cursor:pointer;
+  }
+
+  [hidden]{display:none!important;}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1><span class="flag">🏁</span>Gear Up Algebra</h1>
+    <div class="stats">
+      <div class="stat"><span class="stat-label">Score</span><span id="score">0</span></div>
+      <div class="stat"><span class="stat-label">Streak</span><span id="streak">0</span></div>
+      <div class="stat"><span class="stat-label">Attempts</span><span id="attempts">0</span></div>
+      <div class="stat"><span class="stat-label">Time</span><span id="timer">0:00</span></div>
+    </div>
+  </header>
+
+  <main class="race-layout">
+    <section class="track-panel" aria-label="Drag strip animation">
+      <div class="sun"></div>
+      <div class="mountains"></div>
+
+      <div class="gear-cluster">
+        <div class="gear-label">YOUR GEAR</div>
+        <div class="gear-now" id="gearNow">1<span style="color:var(--ink-dim);font-size:0.85rem;">/5</span></div>
+        <svg class="shifter-svg" width="70" height="56" viewBox="0 0 70 56">
+          <line x1="14" y1="8" x2="14" y2="48"></line>
+          <line x1="35" y1="8" x2="35" y2="48"></line>
+          <line x1="56" y1="8" x2="56" y2="48"></line>
+          <line x1="14" y1="28" x2="56" y2="28"></line>
+          <circle class="slot" data-gear="1" cx="14" cy="8" r="4"></circle>
+          <circle class="slot" data-gear="2" cx="14" cy="48" r="4"></circle>
+          <circle class="slot" data-gear="3" cx="35" cy="8" r="4"></circle>
+          <circle class="slot" data-gear="4" cx="35" cy="48" r="4"></circle>
+          <circle class="slot" data-gear="5" cx="56" cy="8" r="4"></circle>
+          <circle class="knob" id="gearKnob" cx="14" cy="8" r="6"></circle>
+        </svg>
+      </div>
+
+      <div class="strip" id="strip">
+        <div class="speedlines"></div>
+        <div class="finish-line"></div>
+        <div class="lane lane-player">
+          <span class="lane-label">YOU</span>
+          <div class="car car-player" id="carPlayer">
+            <div class="car-body">
+              <span class="spoiler"></span>
+            </div>
+            <span class="wheel w1"></span>
+            <span class="wheel w2"></span>
+            <span class="exhaust"></span>
+          </div>
+        </div>
+        <div class="lane lane-rival">
+          <span class="lane-label">RIVAL</span>
+          <div class="car car-rival" id="carRival">
+            <div class="car-body">
+              <span class="spoiler"></span>
+            </div>
+            <span class="wheel w1"></span>
+            <span class="wheel w2"></span>
+            <span class="exhaust"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="problem-panel">
+      <div class="problem-card">
+        <div>
+          <div class="problem-eyebrow">Expand &amp; simplify</div>
+          <div class="problem-expr" id="problemExpr">3(x + 4)</div>
+        </div>
+        <form id="answerForm" autocomplete="off">
+          <label for="answerInput" class="sr-only">Your answer</label>
+          <input id="answerInput" type="text" placeholder="e.g. 3x + 12" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button type="submit">Shift!</button>
+        </form>
+        <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+        <div class="hint">Get it right &rarr; you shift up a gear and pull ahead. Get it wrong &rarr; the rival car overtakes. Reach 5th gear to win the race!</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="overlay-card">
+      <h2 id="overlayTitle">You win!</h2>
+      <p id="overlaySummary"></p>
+      <button id="restartBtn">Race again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var state = {
+    playerGear: 1,
+    rivalGear: 1,
+    score: 0,
+    attempts: 0,
+    streak: 0,
+    bestStreak: 0,
+    startTime: null,
+    timerInterval: null,
+    over: false,
+    problem: null
+  };
+
+  var els = {
+    score: document.getElementById('score'),
+    streak: document.getElementById('streak'),
+    attempts: document.getElementById('attempts'),
+    timer: document.getElementById('timer'),
+    gearNow: document.getElementById('gearNow'),
+    gearKnob: document.getElementById('gearKnob'),
+    slots: document.querySelectorAll('.slot'),
+    strip: document.getElementById('strip'),
+    carPlayer: document.getElementById('carPlayer'),
+    carRival: document.getElementById('carRival'),
+    problemExpr: document.getElementById('problemExpr'),
+    answerForm: document.getElementById('answerForm'),
+    answerInput: document.getElementById('answerInput'),
+    feedback: document.getElementById('feedback'),
+    overlay: document.getElementById('overlay'),
+    overlayTitle: document.getElementById('overlayTitle'),
+    overlaySummary: document.getElementById('overlaySummary'),
+    restartBtn: document.getElementById('restartBtn')
+  };
+
+  var slotPos = {
+    1:{x:14,y:8}, 2:{x:14,y:48}, 3:{x:35,y:8}, 4:{x:35,y:48}, 5:{x:56,y:8}
+  };
+
+  // ---------- helpers ----------
+  function randInt(min, max){
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function gearToLeftPercent(g){
+    return 5 + (g - 1) * 18.25; // gear1 -> 5%, gear5 -> 78% (keeps car clear of the finish line graphic)
+  }
+
+  function bracketTerm(coefAbs, sign, innerConst){
+    var coef = sign * coefAbs;
+    var insideSign = innerConst >= 0 ? '+' : '-';
+    var insideAbs = Math.abs(innerConst);
+    return {
+      firstDisplay: coef + '(x ' + insideSign + ' ' + insideAbs + ')',
+      withOpDisplay: (coef < 0 ? '- ' : '+ ') + coefAbs + '(x ' + insideSign + ' ' + insideAbs + ')',
+      xCoef: coef,
+      constant: coef * innerConst
+    };
+  }
+
+  function generateProblem(gear){
+    var tier = Math.min(gear, 4);
+    var t1, t2, text, xCoef, constant;
+
+    if (tier <= 2){
+      var a = randInt(2, 3 + tier);
+      var b = randInt(1, 6 + tier * 2);
+      var innerSign = Math.random() < 0.65 ? 1 : -1;
+      t1 = bracketTerm(a, 1, innerSign * b);
+      text = t1.firstDisplay;
+      xCoef = t1.xCoef;
+      constant = t1.constant;
+    } else if (tier === 3){
+      var a2 = randInt(3, 9);
+      var b2 = randInt(1, 12);
+      var outerSign = Math.random() < 0.5 ? -1 : 1;
+      var innerSign2 = Math.random() < 0.5 ? 1 : -1;
+      t1 = bracketTerm(a2, outerSign, innerSign2 * b2);
+      text = t1.firstDisplay;
+      xCoef = t1.xCoef;
+      constant = t1.constant;
+    } else {
+      var c1 = randInt(2, 6);
+      var c2 = randInt(2, 6);
+      var s1 = Math.random() < 0.5 ? -1 : 1;
+      var s2 = Math.random() < 0.5 ? -1 : 1;
+      var in1 = (Math.random() < 0.5 ? 1 : -1) * randInt(1, 8);
+      var in2 = (Math.random() < 0.5 ? 1 : -1) * randInt(1, 8);
+      t1 = bracketTerm(c1, s1, in1);
+      t2 = bracketTerm(c2, s2, in2);
+      text = t1.firstDisplay + ' ' + t2.withOpDisplay;
+      xCoef = t1.xCoef + t2.xCoef;
+      constant = t1.constant + t2.constant;
+    }
+
+    return { text: text, xCoef: xCoef, constant: constant };
+  }
+
+  function parseAnswer(raw){
+    if (!raw) return null;
+    var s = raw.replace(/\s+/g, '').toLowerCase();
+    if (s === '') return null;
+    if (!/^[0-9x+\-]+$/.test(s)) return null;
+
+    var terms = s.match(/[+-]?[^+-]+/g);
+    if (!terms) return null;
+
+    var xCoef = 0, constant = 0;
+    for (var i = 0; i < terms.length; i++){
+      var t = terms[i];
+      if (t.indexOf('x') !== -1){
+        var rest = t.replace('x', '');
+        var coef;
+        if (rest === '' || rest === '+') coef = 1;
+        else if (rest === '-') coef = -1;
+        else {
+          coef = parseInt(rest, 10);
+          if (isNaN(coef)) return null;
+        }
+        // reject malformed extra characters (e.g. leftover second 'x')
+        if (rest.indexOf('x') !== -1) return null;
+        xCoef += coef;
+      } else {
+        var val = parseInt(t, 10);
+        if (isNaN(val)) return null;
+        constant += val;
+      }
+    }
+    return { xCoef: xCoef, constant: constant };
+  }
+
+  // ---------- rendering ----------
+  function renderStats(){
+    els.score.textContent = state.score;
+    els.streak.textContent = state.streak;
+    els.attempts.textContent = state.attempts;
+  }
+
+  function renderGear(){
+    els.gearNow.innerHTML = state.playerGear + '<span style="color:var(--ink-dim);font-size:0.85rem;">/5</span>';
+    var pos = slotPos[state.playerGear];
+    els.gearKnob.setAttribute('cx', pos.x);
+    els.gearKnob.setAttribute('cy', pos.y);
+    els.slots.forEach(function(slot){
+      var g = parseInt(slot.getAttribute('data-gear'), 10);
+      slot.classList.toggle('reached', g <= state.playerGear);
+    });
+  }
+
+  function renderCars(boostWho){
+    els.carPlayer.style.left = gearToLeftPercent(state.playerGear) + '%';
+    els.carRival.style.left = gearToLeftPercent(state.rivalGear) + '%';
+
+    if (boostWho){
+      var car = boostWho === 'player' ? els.carPlayer : els.carRival;
+      els.strip.classList.add('fast');
+      car.classList.add('boost');
+      setTimeout(function(){
+        car.classList.remove('boost');
+        els.strip.classList.remove('fast');
+      }, 900);
+    }
+  }
+
+  function renderProblem(){
+    state.problem = generateProblem(state.playerGear);
+    els.problemExpr.textContent = state.problem.text;
+    els.answerInput.value = '';
+    els.answerInput.focus();
+  }
+
+  function formatTime(ms){
+    var totalSec = Math.floor(ms / 1000);
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function startTimerIfNeeded(){
+    if (state.timerInterval) return;
+    state.startTime = Date.now();
+    state.timerInterval = setInterval(function(){
+      els.timer.textContent = formatTime(Date.now() - state.startTime);
+    }, 1000);
+  }
+
+  function stopTimer(){
+    if (state.timerInterval){
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+  }
+
+  // ---------- game flow ----------
+  function handleSubmit(e){
+    e.preventDefault();
+    if (state.over) return;
+
+    startTimerIfNeeded();
+
+    var parsed = parseAnswer(els.answerInput.value);
+    var correctText = state.problem.xCoef + 'x ' + (state.problem.constant >= 0 ? '+ ' + state.problem.constant : '- ' + Math.abs(state.problem.constant));
+
+    state.attempts++;
+
+    var isCorrect = parsed && parsed.xCoef === state.problem.xCoef && parsed.constant === state.problem.constant;
+
+    if (isCorrect){
+      state.score++;
+      state.streak++;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+      state.playerGear = Math.min(5, state.playerGear + 1);
+      els.feedback.textContent = 'Correct! Shifting up to gear ' + state.playerGear + '.';
+      els.feedback.className = 'feedback correct';
+      renderCars('player');
+    } else {
+      state.streak = 0;
+      state.rivalGear = Math.min(5, state.rivalGear + 1);
+      els.feedback.textContent = 'Not quite — it expands to ' + correctText + '. Rival overtakes!';
+      els.feedback.className = 'feedback wrong';
+      renderCars('rival');
+    }
+
+    renderStats();
+    renderGear();
+
+    if (state.playerGear >= 5){
+      endGame(true);
+      return;
+    }
+    if (state.rivalGear >= 5){
+      endGame(false);
+      return;
+    }
+
+    setTimeout(renderProblem, 1100);
+  }
+
+  function endGame(playerWon){
+    state.over = true;
+    stopTimer();
+    var elapsed = state.startTime ? formatTime(Date.now() - state.startTime) : '0:00';
+    els.overlayTitle.textContent = playerWon ? 'You win the race! 🏁' : 'The rival crosses first!';
+    els.overlaySummary.textContent =
+      (playerWon ? 'You shifted all the way to 5th gear. ' : 'Keep practising your expansions — ') +
+      'Score: ' + state.score + ' correct out of ' + state.attempts +
+      ' · Best streak: ' + state.bestStreak +
+      ' · Time: ' + elapsed;
+    els.overlay.hidden = false;
+  }
+
+  function resetGame(){
+    state.playerGear = 1;
+    state.rivalGear = 1;
+    state.score = 0;
+    state.attempts = 0;
+    state.streak = 0;
+    state.bestStreak = 0;
+    state.startTime = null;
+    state.over = false;
+    stopTimer();
+    els.timer.textContent = '0:00';
+    els.feedback.textContent = '';
+    els.feedback.className = 'feedback';
+    els.overlay.hidden = true;
+    renderStats();
+    renderGear();
+    renderCars();
+    renderProblem();
+  }
+
+  els.answerForm.addEventListener('submit', handleSubmit);
+  els.restartBtn.addEventListener('click', resetGame);
+
+  // ---------- hot-reload friendly boot ----------
+  function start(){
+    resetGame();
+  }
+
+  if (window.claude && window.claude.hot){
+    window.claude.hot.ready ? window.claude.hot.ready(start) : start();
+  } else {
+    start();
+  }
+})();
+</script>
+</body>
+</html>
