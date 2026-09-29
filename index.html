@@ -582,42 +582,27 @@
     };
   }
 
+  // Every problem is exactly one multiplier times one binomial: a(x + b).
+  // Difficulty ramps with gear via the size of the numbers and how often
+  // the outer/inner signs go negative — never by adding a second bracket.
+  var DIFFICULTY_BY_TIER = {
+    1: { aMin: 2, aMax: 4,  bMin: 1, bMax: 8,  outerNeg: 0,    innerNeg: 0.35 },
+    2: { aMin: 2, aMax: 5,  bMin: 1, bMax: 10, outerNeg: 0.25, innerNeg: 0.45 },
+    3: { aMin: 3, aMax: 9,  bMin: 1, bMax: 12, outerNeg: 0.5,  innerNeg: 0.5 },
+    4: { aMin: 4, aMax: 12, bMin: 1, bMax: 15, outerNeg: 0.5,  innerNeg: 0.5 }
+  };
+
   function generateProblem(gear){
     var tier = Math.min(gear, 4);
-    var t1, t2, text, xCoef, constant;
+    var r = DIFFICULTY_BY_TIER[tier];
 
-    if (tier <= 2){
-      var a = randInt(2, 3 + tier);
-      var b = randInt(1, 6 + tier * 2);
-      var innerSign = Math.random() < 0.65 ? 1 : -1;
-      t1 = bracketTerm(a, 1, innerSign * b);
-      text = t1.firstDisplay;
-      xCoef = t1.xCoef;
-      constant = t1.constant;
-    } else if (tier === 3){
-      var a2 = randInt(3, 9);
-      var b2 = randInt(1, 12);
-      var outerSign = Math.random() < 0.5 ? -1 : 1;
-      var innerSign2 = Math.random() < 0.5 ? 1 : -1;
-      t1 = bracketTerm(a2, outerSign, innerSign2 * b2);
-      text = t1.firstDisplay;
-      xCoef = t1.xCoef;
-      constant = t1.constant;
-    } else {
-      var c1 = randInt(2, 6);
-      var c2 = randInt(2, 6);
-      var s1 = Math.random() < 0.5 ? -1 : 1;
-      var s2 = Math.random() < 0.5 ? -1 : 1;
-      var in1 = (Math.random() < 0.5 ? 1 : -1) * randInt(1, 8);
-      var in2 = (Math.random() < 0.5 ? 1 : -1) * randInt(1, 8);
-      t1 = bracketTerm(c1, s1, in1);
-      t2 = bracketTerm(c2, s2, in2);
-      text = t1.firstDisplay + ' ' + t2.withOpDisplay;
-      xCoef = t1.xCoef + t2.xCoef;
-      constant = t1.constant + t2.constant;
-    }
+    var a = randInt(r.aMin, r.aMax);
+    var b = randInt(r.bMin, r.bMax);
+    var outerSign = Math.random() < r.outerNeg ? -1 : 1;
+    var innerSign = Math.random() < r.innerNeg ? -1 : 1;
 
-    return { text: text, xCoef: xCoef, constant: constant };
+    var t1 = bracketTerm(a, outerSign, innerSign * b);
+    return { text: t1.firstDisplay, xCoef: t1.xCoef, constant: t1.constant };
   }
 
   function parseAnswer(raw){
