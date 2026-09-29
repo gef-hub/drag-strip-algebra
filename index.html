@@ -428,6 +428,38 @@
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
   }
+
+  /* ---------- Mode toggle ---------- */
+  .mode-toggle{
+    display:flex;
+    background:rgba(255,255,255,0.05);
+    border:1px solid var(--card-border);
+    border-radius:999px;
+    padding:3px;
+    gap:2px;
+  }
+  .mode-btn{
+    font-family:'Rajdhani',sans-serif;
+    font-weight:700;
+    font-size:0.82rem;
+    letter-spacing:0.03em;
+    padding:7px 16px;
+    border-radius:999px;
+    border:none;
+    background:transparent;
+    color:var(--ink-dim);
+    cursor:pointer;
+    transition:background 0.2s,color 0.2s;
+  }
+  .mode-btn[aria-pressed="true"]{
+    background:linear-gradient(135deg,var(--accent),#ffb833);
+    color:#241a00;
+  }
+  .mode-btn[aria-pressed="false"]:hover{color:var(--ink);}
+  .mode-tag{
+    font-weight:700;
+    color:var(--accent);
+  }
 </style>
 
 </head>
@@ -435,6 +467,10 @@
 <div class="app">
   <header class="topbar">
     <h1><span class="flag">🏁</span>Gear Up Algebra</h1>
+    <div class="mode-toggle" role="group" aria-label="Difficulty mode">
+      <button type="button" class="mode-btn" id="modeClassicBtn" data-mode="classic">Classic</button>
+      <button type="button" class="mode-btn" id="modeChallengeBtn" data-mode="challenge">Challenge</button>
+    </div>
     <div class="stats">
       <div class="stat"><span class="stat-label">Score</span><span id="score">0</span></div>
       <div class="stat"><span class="stat-label">Streak</span><span id="streak">0</span></div>
@@ -496,7 +532,7 @@
     <section class="problem-panel">
       <div class="problem-card">
         <div>
-          <div class="problem-eyebrow">Expand &amp; simplify</div>
+          <div class="problem-eyebrow">Expand &amp; simplify &middot; <span class="mode-tag" id="modeTag">Classic</span></div>
           <div class="problem-expr" id="problemExpr">3(x + 4)</div>
         </div>
         <form id="answerForm" autocomplete="off">
@@ -522,6 +558,30 @@
 <script>
 (function(){
   "use strict";
+
+  // ---------- mode resolution ----------
+  // Mode is read from the URL (?mode=classic|challenge) so toggling it is a
+  // real page load, not just a JS state flip. It falls back to whatever the
+  // viewer last picked (stored per-browser), then to "classic".
+  function readStoredMode(){
+    try {
+      var v = window.localStorage.getItem('gearUpAlgebraMode');
+      return (v === 'classic' || v === 'challenge') ? v : null;
+    } catch (err) { return null; }
+  }
+  function writeStoredMode(m){
+    try { window.localStorage.setItem('gearUpAlgebraMode', m); } catch (err) { /* ignore */ }
+  }
+
+  var urlMode = null;
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var m = params.get('mode');
+    if (m === 'classic' || m === 'challenge') urlMode = m;
+  } catch (err) { /* ignore */ }
+
+  var MODE = urlMode || readStoredMode() || 'classic';
+  writeStoredMode(MODE);
 
   var state = {
     playerGear: 1,
@@ -554,7 +614,10 @@
     overlay: document.getElementById('overlay'),
     overlayTitle: document.getElementById('overlayTitle'),
     overlaySummary: document.getElementById('overlaySummary'),
-    restartBtn: document.getElementById('restartBtn')
+    restartBtn: document.getElementById('restartBtn'),
+    modeTag: document.getElementById('modeTag'),
+    modeClassicBtn: document.getElementById('modeClassicBtn'),
+    modeChallengeBtn: document.getElementById('modeChallengeBtn')
   };
 
   var slotPos = {
@@ -570,39 +633,66 @@
     return 5 + (g - 1) * 18.25; // gear1 -> 5%, gear5 -> 78% (keeps car clear of the finish line graphic)
   }
 
-  function bracketTerm(coefAbs, sign, innerConst){
-    var coef = sign * coefAbs;
-    var insideSign = innerConst >= 0 ? '+' : '-';
-    var insideAbs = Math.abs(innerConst);
-    return {
-      firstDisplay: coef + '(x ' + insideSign + ' ' + insideAbs + ')',
-      withOpDisplay: (coef < 0 ? '- ' : '+ ') + coefAbs + '(x ' + insideSign + ' ' + insideAbs + ')',
-      xCoef: coef,
-      constant: coef * innerConst
-    };
+  function signedInt(min, max){
+    // a nonzero-sign helper: magnitude from [min,max], sign chosen 50/50
+    return randInt(min, max) * (Math.random() < 0.5 ? -1 : 1);
   }
 
-  // Every problem is exactly one multiplier times one binomial: a(x + b).
-  // Difficulty ramps with gear via the size of the numbers and how often
-  // the outer/inner signs go negative — never by adding a second bracket.
-  var DIFFICULTY_BY_TIER = {
-    1: { aMin: 2, aMax: 4,  bMin: 1, bMax: 8,  outerNeg: 0,    innerNeg: 0.35 },
-    2: { aMin: 2, aMax: 5,  bMin: 1, bMax: 10, outerNeg: 0.25, innerNeg: 0.45 },
-    3: { aMin: 3, aMax: 9,  bMin: 1, bMax: 12, outerNeg: 0.5,  innerNeg: 0.5 },
-    4: { aMin: 4, aMax: 12, bMin: 1, bMax: 15, outerNeg: 0.5,  innerNeg: 0.5 }
+  // "bx" reads as "x" / "-x" when the coefficient is 1 / -1, like a textbook.
+  function formatBx(b){
+    if (b === 1) return 'x';
+    if (b === -1) return '-x';
+    return b + 'x';
+  }
+
+  // ---------- Classic: a(bx ± c) — a excludes -1, 0, 1 ----------
+  // b and c may be any nonzero integer (b can be 1, since "a(x + c)" is a
+  // perfectly normal classic-mode problem); only the outer multiplier a is
+  // barred from the trivial/degenerate {-1,0,1}.
+  var CLASSIC_TIERS = {
+    1: { aMin: 2, aMax: 4,  aNeg: 0,    bMin: 1, bMax: 3, bNeg: 0.15, cMin: 1, cMax: 8,  cNeg: 0.35 },
+    2: { aMin: 2, aMax: 5,  aNeg: 0.25, bMin: 1, bMax: 4, bNeg: 0.3,  cMin: 1, cMax: 10, cNeg: 0.45 },
+    3: { aMin: 3, aMax: 9,  aNeg: 0.5,  bMin: 1, bMax: 5, bNeg: 0.4,  cMin: 1, cMax: 12, cNeg: 0.5 },
+    4: { aMin: 4, aMax: 12, aNeg: 0.5,  bMin: 1, bMax: 6, bNeg: 0.5,  cMin: 1, cMax: 15, cNeg: 0.5 }
   };
 
-  function generateProblem(gear){
-    var tier = Math.min(gear, 4);
-    var r = DIFFICULTY_BY_TIER[tier];
+  function generateClassicProblem(gear){
+    var r = CLASSIC_TIERS[Math.min(gear, 4)];
+    var a = randInt(r.aMin, r.aMax) * (Math.random() < r.aNeg ? -1 : 1);
+    var b = randInt(r.bMin, r.bMax) * (Math.random() < r.bNeg ? -1 : 1);
+    var c = randInt(r.cMin, r.cMax);
+    var cSign = Math.random() < r.cNeg ? -1 : 1;
 
-    var a = randInt(r.aMin, r.aMax);
+    var text = a + '(' + formatBx(b) + ' ' + (cSign > 0 ? '+' : '-') + ' ' + c + ')';
+    return { text: text, xCoef: a * b, constant: a * cSign * c };
+  }
+
+  // ---------- Challenge: a ± b(cx ± d) — a, b, c, d all exclude -1, 0, 1 ----------
+  var CHALLENGE_TIERS = {
+    1: { aMin: 2, aMax: 5,  bMin: 2, bMax: 4, cMin: 2, cMax: 4, dMin: 2, dMax: 8 },
+    2: { aMin: 2, aMax: 6,  bMin: 2, bMax: 5, cMin: 2, cMax: 5, dMin: 2, dMax: 10 },
+    3: { aMin: 2, aMax: 9,  bMin: 2, bMax: 6, cMin: 2, cMax: 6, dMin: 2, dMax: 12 },
+    4: { aMin: 3, aMax: 12, bMin: 2, bMax: 8, cMin: 2, cMax: 8, dMin: 2, dMax: 15 }
+  };
+
+  function generateChallengeProblem(gear){
+    var r = CHALLENGE_TIERS[Math.min(gear, 4)];
+    var a = signedInt(r.aMin, r.aMax);
+    var op1 = Math.random() < 0.5 ? 1 : -1;
     var b = randInt(r.bMin, r.bMax);
-    var outerSign = Math.random() < r.outerNeg ? -1 : 1;
-    var innerSign = Math.random() < r.innerNeg ? -1 : 1;
+    var c = signedInt(r.cMin, r.cMax);
+    var op2 = Math.random() < 0.5 ? 1 : -1;
+    var d = randInt(r.dMin, r.dMax);
 
-    var t1 = bracketTerm(a, outerSign, innerSign * b);
-    return { text: t1.firstDisplay, xCoef: t1.xCoef, constant: t1.constant };
+    var signedB = op1 * b;
+    var signedD = op2 * d;
+
+    var text = a + ' ' + (op1 > 0 ? '+' : '-') + ' ' + b + '(' + formatBx(c) + ' ' + (op2 > 0 ? '+' : '-') + ' ' + d + ')';
+    return { text: text, xCoef: signedB * c, constant: a + signedB * signedD };
+  }
+
+  function generateProblem(gear){
+    return MODE === 'challenge' ? generateChallengeProblem(gear) : generateClassicProblem(gear);
   }
 
   function parseAnswer(raw){
@@ -778,11 +868,30 @@
     renderProblem();
   }
 
+  function renderModeUI(){
+    els.modeTag.textContent = MODE === 'challenge' ? 'Challenge' : 'Classic';
+    els.modeClassicBtn.setAttribute('aria-pressed', MODE === 'classic' ? 'true' : 'false');
+    els.modeChallengeBtn.setAttribute('aria-pressed', MODE === 'challenge' ? 'true' : 'false');
+  }
+
+  function switchMode(nextMode){
+    if (nextMode === MODE) return;
+    writeStoredMode(nextMode);
+    // A real navigation, not a JS state flip — the page reloads fresh into
+    // the destination mode.
+    var url = new URL(window.location.href);
+    url.searchParams.set('mode', nextMode);
+    window.location.href = url.toString();
+  }
+
   els.answerForm.addEventListener('submit', handleSubmit);
   els.restartBtn.addEventListener('click', resetGame);
+  els.modeClassicBtn.addEventListener('click', function(){ switchMode('classic'); });
+  els.modeChallengeBtn.addEventListener('click', function(){ switchMode('challenge'); });
 
   // ---------- hot-reload friendly boot ----------
   function start(){
+    renderModeUI();
     resetGame();
   }
 
